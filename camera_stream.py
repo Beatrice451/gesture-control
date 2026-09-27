@@ -1,15 +1,34 @@
+import sys
 import threading
 import time
-
 import cv2
 
 
 class CameraStream:
     """Фоновый поток читает кадры с камеры, основной берёт самый свежий."""
 
-    def __init__(self, src=0, w=640, h=480, fps=30):
-        self.cap = cv2.VideoCapture(src, cv2.CAP_V4L2)
-        self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc(*'MJPG'))
+    def __init__(self, src=0, w=640, h=480, fps=30, backend=None):
+        # Автовыбор бэкенда в зависимости от ОС
+        if backend is None:
+            if sys.platform.startswith("linux"):
+                backend = cv2.CAP_V4L2
+            elif sys.platform == "win32":
+                backend = cv2.CAP_DSHOW   # DirectShow — быстрее и стабильнее на Windows
+            elif sys.platform == "darwin":
+                backend = cv2.CAP_AVFOUNDATION  # macOS
+            else:
+                backend = cv2.CAP_ANY
+
+        self.cap = cv2.VideoCapture(src, backend)
+
+        if not self.cap.isOpened():
+            raise RuntimeError(f"Не удалось открыть камеру {src} (backend={backend})")
+
+        # MJPG имеет смысл ставить только на Linux — там это реально снижает задержку.
+        # На Windows многие камеры его не поддерживают через DirectShow.
+        if sys.platform.startswith("linux"):
+            self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc(*"MJPG"))
+
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, w)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, h)
         self.cap.set(cv2.CAP_PROP_FPS, fps)
@@ -19,6 +38,7 @@ class CameraStream:
         self._frame_id = 0
         self._lock = threading.Lock()
         self._running = True
+
         self._thread = threading.Thread(target=self._update, daemon=True)
         self._thread.start()
 
