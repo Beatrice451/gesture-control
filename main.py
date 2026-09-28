@@ -1,4 +1,5 @@
 import math
+import sys
 import time
 from collections import deque
 
@@ -7,14 +8,18 @@ import mediapipe as mp
 import numpy as np
 import pyautogui
 import pyperclip
+from PyQt6.QtWidgets import QApplication
 from pynput.mouse import Controller, Button
 
 from camera_stream import CameraStream
 from config import *
+from dot_overlay import Overlay
 from filters import OneEuroFilter
 from screenshot_selector import ScreenshotSelector
 from smooth import SmoothMouse
 from voice_input import VoiceInput
+
+import tkinter as tk
 
 
 
@@ -80,7 +85,11 @@ smooth_mouse = SmoothMouse(
     fps=60
 )
 
+
 stream = CameraStream(src=0, w=640, h=480, fps=30)
+
+app = QApplication.instance() or QApplication(sys.argv)
+overlay = Overlay(screen_w, screen_h)
 
 filter_x = OneEuroFilter(freq=30.0, mincutoff=1.2, beta=0.02, dcutoff=1.0)
 filter_y = OneEuroFilter(freq=30.0, mincutoff=1.2, beta=0.02, dcutoff=1.0)
@@ -344,6 +353,11 @@ try:
             smooth_x = filter_x(target_x, now)
             smooth_y = filter_y(target_y, now)
 
+            overlay.update_dot(smooth_x, smooth_y)
+
+            app.processEvents()
+
+
             if abs(smooth_x - prev_mouse_x) < DEADZONE_PX:
                 smooth_x = prev_mouse_x
             if abs(smooth_y - prev_mouse_y) < DEADZONE_PX:
@@ -482,3 +496,5 @@ finally:
     stream.release()
     cv2.destroyAllWindows()
     detector.close()
+    overlay.close()
+    app.quit()
