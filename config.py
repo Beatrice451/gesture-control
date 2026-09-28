@@ -20,13 +20,13 @@ SWIPE_COOLDOWN = 1.0  # кд на жест, чтобы не переключат
 
 REFERENCE_HAND_SCALE = 0.3
 
-MP_WIDTH = 320
-MP_HEIGHT = 240
+MP_WIDTH = 640
+MP_HEIGHT = 480
 
 SCREENSHOT_HOLD_TIME = 0.5 # сколько нужно держать сомкнутыми большой и указательный палец, чтобы перейти в режим скрина
 DRAG_HOLD_TIME = 0.18          # сек, после этого pinch = зажатая ЛКМ
-PINCH_RIGHT_CLOSE = 0.05       # подстроить под себя
-PINCH_RIGHT_OPEN = 0.07        # подстроить под себя
+PINCH_RIGHT_CLOSE = 0.07       # подстроить под себя
+PINCH_RIGHT_OPEN = 0.1        # подстроить под себя
 RIGHT_CLICK_MAX_HOLD = 0.35    # сек, быстрый щипок = ПКМ
 RIGHT_CLICK_COOLDOWN = 0.5     # сек
 
