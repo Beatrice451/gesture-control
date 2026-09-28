@@ -37,6 +37,7 @@ pinch_start_time = 0.0
 voice = VoiceInput(model_size="small", language=None)
 fist_since = None
 palm_since = None
+size_k = 0.0
 
 dragging = False
 last_click = 0.0
@@ -97,12 +98,18 @@ last_processed_id = -1
 
 # Для получения "эталона" масштабов
 def hand_scale(landmarks):
-    # wrist(0) -> middle_mcp(9)
-    return float(np.hypot(
-        landmarks[9].x - landmarks[0].x,
-        landmarks[9].y - landmarks[0].y,
-    )) or 1e-6
-
+    """Устойчивый эталон размера кисти.
+    Усредняем расстояния от запястья (0) до оснований пальцев (5, 9, 13, 17).
+    Берём в нормализованных координатах — этого достаточно, поскольку
+    коэффициент в дальнейшем используется как отношение."""
+    refs = (5, 9, 13, 17)
+    d = 0.0
+    for i in refs:
+        d += math.hypot(
+            landmarks[i].x - landmarks[0].x,
+            landmarks[i].y - landmarks[0].y,
+        )
+    return (d / len(refs)) or 1e-6
 
 def is_scroll_gesture(landmarks):
     ext = []
@@ -240,16 +247,20 @@ try:
         if result.hand_landmarks:
             hand_landmarks = result.hand_landmarks[0]
 
+            # толщину линии и радиус точек масштабируем тем же size_k
+            line_th = max(1, int(round(2 * size_k)))
+            dot_r = int(np.clip(round(5 * size_k), 2, 10))
+
             for start_idx, end_idx in HAND_CONNECTIONS:
                 start = hand_landmarks[start_idx]
                 end = hand_landmarks[end_idx]
                 start_px = (int(start.x * w), int(start.y * h))
                 end_px = (int(end.x * w), int(end.y * h))
-                cv2.line(frame, start_px, end_px, (0, 255, 0), 2)
+                cv2.line(frame, start_px, end_px, (0, 255, 0), line_th)
 
             for lm in hand_landmarks:
                 cx, cy = int(lm.x * w), int(lm.y * h)
-                cv2.circle(frame, (cx, cy), 5, (255, 0, 0), -1)
+                cv2.circle(frame, (cx, cy), dot_r, (255, 0, 0), -1)
 
             index = hand_landmarks[8]
             thumb = hand_landmarks[4]
@@ -264,10 +275,13 @@ try:
                              + hand_landmarks[13].y + hand_landmarks[17].y
                      ) / 5.0
 
-            # scale = hand_scale(hand_landmarks) # TODO починить масштаб
-            scale = 1  # пока что затычка
-            dist = float(np.hypot(index.x - thumb.x, index.y - thumb.y)) / scale
-            dist_right = float(np.hypot(thumb.x - middle.x, thumb.y - middle.y)) / scale
+            scale = hand_scale(hand_landmarks)
+            # >1 — рука ближе эталона, <1 — дальше. Клипуем, чтобы шум позы
+            # (например, при сильном наклоне кисти) не ломал пороги.
+            size_k = float(np.clip(scale / REFERENCE_HAND_SCALE, 0.4, 2.5))
+
+            dist = float(np.hypot(index.x - thumb.x, index.y - thumb.y)) / size_k
+            dist_right = float(np.hypot(thumb.x - middle.x, thumb.y - middle.y)) / size_k
             now_t = time.time()
 
             fist = is_fist(hand_landmarks)

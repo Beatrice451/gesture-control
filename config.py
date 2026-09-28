@@ -18,6 +18,8 @@ SWIPE_THRESHOLD = 0.25  # насколько должна сместиться �
 SWIPE_MAX_TIME = 0.35
 SWIPE_COOLDOWN = 1.0  # кд на жест, чтобы не переключать десяток вкладок одним жестом
 
+REFERENCE_HAND_SCALE = 0.3
+
 MP_WIDTH = 320
 MP_HEIGHT = 240
 
